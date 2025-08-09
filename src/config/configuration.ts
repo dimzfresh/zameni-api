@@ -10,7 +10,7 @@ export default () => ({
     name: process.env.DB_NAME || 'zameni_db',
   },
   jwt: {
-    secret: process.env.JWT_SECRET || 'default-secret-change-in-production',
+    secret: process.env.JWT_SECRET || 'zameni-super-secret-jwt-key-change-in-production',
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
   logging: {
