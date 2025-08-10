@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { QueueService } from './queue.service';
@@ -8,14 +8,12 @@ import { UserRegistrationProcessor } from './processors/user-registration.proces
 import { UserAuthProcessor } from './processors/user-auth.processor';
 import { NotificationProcessor } from './processors/notification.processor';
 import { ServicesModule } from '../../common/services/services.module';
-import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
     ConfigModule, 
     EventEmitterModule.forRoot(),
-    ServicesModule, 
-    forwardRef(() => AuthModule)
+    ServicesModule
   ],
   providers: [
     QueueService,

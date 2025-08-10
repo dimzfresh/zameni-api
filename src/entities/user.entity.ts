@@ -79,6 +79,9 @@ export class User {
   lastLoginAt?: Date;
 
   @Column({ type: 'timestamp', nullable: true })
+  lastLogoutAt?: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
   emailVerifiedAt?: Date;
 
   @CreateDateColumn()

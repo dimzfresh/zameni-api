@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { QueueMessage } from '../interfaces/queue.interface';
 import { BaseQueueProcessor } from './base.processor';
-import { AuthService } from '../../auth/auth.service';
+import { UserService } from '../../../common/services/user.service';
 import { QueueTopic } from '../enums/queue.enum';
 
 @Injectable()
 export class UserAuthProcessor extends BaseQueueProcessor {
-  constructor(private readonly authService: AuthService) {
+  constructor(private readonly userService: UserService) {
     super();
   }
 
@@ -16,16 +16,16 @@ export class UserAuthProcessor extends BaseQueueProcessor {
     try {
       switch (message.topic) {
         case QueueTopic.USER_LOGIN:
-          await this.authService.login(message.data);
+          await this.handleUserLogin(message.data);
           break;
         case QueueTopic.USER_REFRESH:
-          await this.authService.refreshToken(message.data.refreshToken);
+          await this.handleUserRefresh(message.data);
           break;
         case QueueTopic.USER_LOGOUT:
-          await this.authService.logout(message.data.userId);
+          await this.handleUserLogout(message.data);
           break;
         case QueueTopic.USER_DELETE:
-          await this.authService.deleteAccount(message.data.userId);
+          await this.handleUserDelete(message.data);
           break;
         default:
           throw new Error(`Unknown auth topic: ${message.topic}`);
@@ -36,6 +36,33 @@ export class UserAuthProcessor extends BaseQueueProcessor {
     } catch (error) {
       this.logError(message.id, error);
       throw error;
+    }
+  }
+
+  private async handleUserLogin(data: any): Promise<void> {
+    // Логика входа пользователя
+    const user = await this.userService.findByEmail(data.email);
+    if (user) {
+      await this.userService.updateLastLogin(user.id);
+    }
+  }
+
+  private async handleUserRefresh(data: any): Promise<void> {
+    // Логика обновления токена
+    console.log('Refreshing token for user');
+  }
+
+  private async handleUserLogout(data: any): Promise<void> {
+    // Логика выхода пользователя
+    if (data.userId) {
+      await this.userService.updateLastLogout(data.userId);
+    }
+  }
+
+  private async handleUserDelete(data: any): Promise<void> {
+    // Логика удаления пользователя
+    if (data.userId) {
+      await this.userService.deleteUser(data.userId);
     }
   }
 }

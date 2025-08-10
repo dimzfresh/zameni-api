@@ -126,6 +126,16 @@ export class UserService {
     });
   }
 
+  async updateLastLogout(id: number): Promise<void> {
+    await this.userRepository.update(id, {
+      lastLogoutAt: new Date(),
+    });
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    await this.delete(id);
+  }
+
   async updateRefreshToken(id: number, refreshToken: string | null): Promise<void> {
     await this.userRepository.update(id, {
       refreshToken: refreshToken || undefined,

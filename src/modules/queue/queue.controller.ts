@@ -1,11 +1,14 @@
-import { Controller, Get, Post, Body, Delete } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Get, Post, Delete, Body, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { QueueService } from './queue.service';
+import { AdminGuard } from '../auth/guards/admin.guard';
 import { ResponseDto } from '../../common/dto/response.dto';
-import { QueuePriority } from './enums/queue.enum';
+import { QueueTopic, QueuePriority } from './enums/queue.enum';
 
 @ApiTags('Очереди (внутреннее)')
 @Controller('queue')
+@UseGuards(AdminGuard)
+@ApiBearerAuth('JWT-auth')
 export class QueueController {
   constructor(private queueService: QueueService) {}
 

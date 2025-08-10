@@ -1,7 +1,16 @@
+import { ApiProperty } from '@nestjs/swagger';
+
 export class ResponseDto<T> {
+  @ApiProperty({ example: true })
   success: boolean;
+
+  @ApiProperty({ example: 'Operation completed successfully', required: false })
   message?: string;
+
+  @ApiProperty({ required: false })
   data?: T;
+
+  @ApiProperty({ example: 'Error message', required: false })
   error?: string;
 
   constructor(success: boolean, data?: T, message?: string, error?: string) {

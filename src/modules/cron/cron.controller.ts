@@ -1,17 +1,17 @@
-import { Controller, Post, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { CronService } from './cron.service';
-import { ResponseDto } from '../../common/dto/response.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
+import { ResponseDto } from '../../common/dto/response.dto';
 
 @ApiTags('Автоматическое удаление (внутреннее)')
 @Controller('cron')
+@UseGuards(AdminGuard)
+@ApiBearerAuth('JWT-auth')
 export class CronController {
   constructor(private cronService: CronService) {}
 
   @Post('cleanup/manual')
-  @UseGuards(JwtAuthGuard, AdminGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: 'Ручной запуск очистки неактивных пользователей',
@@ -25,7 +25,6 @@ export class CronController {
   }
 
   @Get('cleanup/stats')
-  @UseGuards(JwtAuthGuard, AdminGuard)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ 
     summary: 'Статистика неактивных пользователей',

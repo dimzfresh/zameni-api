@@ -1,15 +1,14 @@
-import { Controller, Get, Post, Put, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Param, Query, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
-import { ResponseDto } from '../../common/dto/response.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
+import { ResponseDto } from '../../common/dto/response.dto';
 import { UserRole, UserStatus } from '../../entities/user.entity';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 
 @ApiTags('Администрирование (внутреннее)')
 @Controller('admin')
-@UseGuards(JwtAuthGuard, AdminGuard)
+@UseGuards(AdminGuard)
 @ApiBearerAuth('JWT-auth')
 export class AdminController {
   constructor(private adminService: AdminService) {}
