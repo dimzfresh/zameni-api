@@ -1,19 +1,33 @@
-export default () => ({
-  port: parseInt(process.env.PORT || '3000', 10),
-  nodeEnv: process.env.NODE_ENV || 'development',
-  database: {
-    url: process.env.DATABASE_URL || '',
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5432', 10),
-    username: process.env.DB_USERNAME || 'postgres',
-    password: process.env.DB_PASSWORD || 'password',
-    name: process.env.DB_NAME || 'zameni_db',
-  },
-  jwt: {
-    secret: process.env.JWT_SECRET || 'zameni-super-secret-jwt-key-change-in-production',
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-  },
-  logging: {
-    level: process.env.LOG_LEVEL || 'info',
-  },
-});
+import { getCurrentConfig } from './environments';
+
+export default () => {
+  const config = getCurrentConfig();
+  
+  return {
+    port: config.port,
+    nodeEnv: config.nodeEnv,
+    database: {
+      url: process.env.DATABASE_URL || '',
+      host: config.database.host,
+      port: config.database.port,
+      username: config.database.username,
+      password: config.database.password,
+      name: config.database.name,
+      synchronize: config.database.synchronize,
+      logging: config.database.logging,
+      ssl: config.database.ssl,
+    },
+    jwt: {
+      secret: config.jwt.secret,
+      expiresIn: config.jwt.expiresIn,
+    },
+    logging: {
+      level: config.logging.level,
+      prettyPrint: config.logging.prettyPrint,
+    },
+    cors: config.cors,
+    swagger: config.swagger,
+    rateLimit: config.rateLimit,
+    security: config.security,
+  };
+};

@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  postgres-dev:
+    image: postgres:15-alpine
+    container_name: zameni-postgres-dev
+    environment:
+      POSTGRES_DB: zameni_development
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    networks:
+      - zameni-dev-network
+
+  redis-dev:
+    image: redis:7-alpine
+    container_name: zameni-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    restart: unless-stopped
+    networks:
+      - zameni-dev-network
+
+volumes:
+  postgres_dev_data:
+  redis_dev_data:
+
+networks:
+  zameni-dev-network:
+    driver: bridge

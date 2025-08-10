@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  postgres-staging:
+    image: postgres:15-alpine
+    container_name: zameni-postgres-staging
+    environment:
+      POSTGRES_DB: zameni_staging
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: staging-password
+    ports:
+      - "5433:5432"  # Другой порт для staging
+    volumes:
+      - postgres_staging_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    networks:
+      - zameni-staging-network
+
+  redis-staging:
+    image: redis:7-alpine
+    container_name: zameni-redis-staging
+    ports:
+      - "6380:6379"  # Другой порт для staging
+    volumes:
+      - redis_staging_data:/data
+    restart: unless-stopped
+    networks:
+      - zameni-staging-network
+
+volumes:
+  postgres_staging_data:
+  redis_staging_data:
+
+networks:
+  zameni-staging-network:
+    driver: bridge
