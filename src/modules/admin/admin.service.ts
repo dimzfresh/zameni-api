@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { UserService } from '../../common/services/user.service';
 import { UserRole, UserStatus } from '../../entities/user.entity';
 import { PAGINATION } from '../../common/constants/app.constants';
@@ -17,21 +21,33 @@ export class AdminService {
   /**
    * Поиск пользователей по email или имени
    */
-  async searchUsers(query: string, page: number = 1, limit: number = PAGINATION.DEFAULT_LIMIT) {
+  async searchUsers(
+    query: string,
+    page: number = 1,
+    limit: number = PAGINATION.DEFAULT_LIMIT,
+  ) {
     return this.userService.searchUsers(query, page, limit);
   }
 
   /**
    * Получить пользователей по роли
    */
-  async getUsersByRole(role: UserRole, page: number = 1, limit: number = PAGINATION.DEFAULT_LIMIT) {
+  async getUsersByRole(
+    role: UserRole,
+    page: number = 1,
+    limit: number = PAGINATION.DEFAULT_LIMIT,
+  ) {
     return this.userService.getUsersByRole(role, page, limit);
   }
 
   /**
    * Получить пользователей по статусу
    */
-  async getUsersByStatus(status: UserStatus, page: number = 1, limit: number = PAGINATION.DEFAULT_LIMIT) {
+  async getUsersByStatus(
+    status: UserStatus,
+    page: number = 1,
+    limit: number = PAGINATION.DEFAULT_LIMIT,
+  ) {
     return this.userService.getUsersByStatus(status, page, limit);
   }
 
@@ -67,20 +83,22 @@ export class AdminService {
    */
   async updateRole(userId: number, role: UserRole) {
     const user = await this.userService.findById(userId);
-    
+
     // Проверяем, что не удаляем последнего администратора
     if (user.role === UserRole.ADMIN && role === UserRole.USER) {
       const adminCount = await this.userService.userRepository.count({
-        where: { role: UserRole.ADMIN }
+        where: { role: UserRole.ADMIN },
       });
-      
+
       if (adminCount <= 1) {
-        throw new BadRequestException('Нельзя удалить последнего администратора');
+        throw new BadRequestException(
+          'Нельзя удалить последнего администратора',
+        );
       }
     }
 
     await this.userService.update(userId, { role });
-    
+
     return { message: 'Роль пользователя обновлена' };
   }
 

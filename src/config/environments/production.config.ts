@@ -1,4 +1,9 @@
-import { PORTS, DATABASE, RATE_LIMIT, PERFORMANCE } from '../../common/constants/app.constants';
+import {
+  PORTS,
+  DATABASE,
+  RATE_LIMIT,
+  PERFORMANCE,
+} from '../../common/constants/app.constants';
 
 export const productionConfig = {
   port: parseInt(process.env.PORT || PORTS.DEFAULT.toString(), 10),

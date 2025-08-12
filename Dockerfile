@@ -1,12 +1,12 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
 # Копируем файлы зависимостей
 COPY package*.json ./
 
-# Устанавливаем зависимости
-RUN npm ci --only=production
+# Устанавливаем все зависимости (включая dev для сборки)
+RUN npm ci
 
 # Копируем исходный код
 COPY . .
@@ -14,7 +14,7 @@ COPY . .
 # Собираем приложение
 RUN npm run build
 
-# Удаляем dev зависимости
+# Удаляем dev зависимости после сборки
 RUN npm prune --production
 
 # Создаем пользователя для безопасности

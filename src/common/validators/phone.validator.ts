@@ -1,4 +1,8 @@
-import { registerDecorator, ValidationOptions, ValidationArguments } from 'class-validator';
+import {
+  registerDecorator,
+  ValidationOptions,
+  ValidationArguments,
+} from 'class-validator';
 
 /**
  * Простой валидатор для номеров телефонов
@@ -6,7 +10,7 @@ import { registerDecorator, ValidationOptions, ValidationArguments } from 'class
  * Не зависит от региона или страны
  */
 export function IsPhoneNumber(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       name: 'isPhoneNumber',
       target: object.constructor,
@@ -24,7 +28,7 @@ export function IsPhoneNumber(validationOptions?: ValidationOptions) {
 
           // Убираем все пробелы, скобки, дефисы и плюсы
           const cleanPhone = value.replace(/[\s\(\)\-\+]/g, '');
-          
+
           // Проверяем, что остались только цифры
           if (!/^\d+$/.test(cleanPhone)) {
             return false;
@@ -50,7 +54,7 @@ export function IsPhoneNumber(validationOptions?: ValidationOptions) {
  * Принимает только цифры, без форматирования
  */
 export function IsPhoneNumberAsNumber(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       name: 'isPhoneNumberAsNumber',
       target: object.constructor,
@@ -64,7 +68,7 @@ export function IsPhoneNumberAsNumber(validationOptions?: ValidationOptions) {
 
           // Принимаем как строку, так и число
           const phoneStr = String(value);
-          
+
           // Проверяем, что содержит только цифры
           if (!/^\d+$/.test(phoneStr)) {
             return false;
@@ -89,7 +93,7 @@ export function IsPhoneNumberAsNumber(validationOptions?: ValidationOptions) {
  * Валидатор для простых номеров (только цифры, без форматирования)
  */
 export function IsDigitsOnly(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       name: 'isDigitsOnly',
       target: object.constructor,
@@ -119,8 +123,11 @@ export function IsDigitsOnly(validationOptions?: ValidationOptions) {
 /**
  * Валидатор для номеров с минимальной длиной
  */
-export function IsPhoneNumberWithMinLength(minLength: number = 7, validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+export function IsPhoneNumberWithMinLength(
+  minLength: number = 7,
+  validationOptions?: ValidationOptions,
+) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       name: 'isPhoneNumberWithMinLength',
       target: object.constructor,
@@ -138,7 +145,7 @@ export function IsPhoneNumberWithMinLength(minLength: number = 7, validationOpti
 
           // Убираем все пробелы, скобки, дефисы и плюсы
           const cleanPhone = value.replace(/[\s\(\)\-\+]/g, '');
-          
+
           // Проверяем, что остались только цифры
           if (!/^\d+$/.test(cleanPhone)) {
             return false;

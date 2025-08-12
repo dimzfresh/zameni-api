@@ -1,5 +1,20 @@
-import { Controller, Get, Post, Put, Param, Query, Body, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Param,
+  Query,
+  Body,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { ResponseDto } from '../../common/dto/response.dto';
@@ -14,9 +29,9 @@ export class AdminController {
   constructor(private adminService: AdminService) {}
 
   @Get('users')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Получить всех пользователей',
-    description: 'Возвращает список всех пользователей с пагинацией'
+    description: 'Возвращает список всех пользователей с пагинацией',
   })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -30,9 +45,9 @@ export class AdminController {
   }
 
   @Get('users/search')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Поиск пользователей',
-    description: 'Поиск пользователей по email или имени'
+    description: 'Поиск пользователей по email или имени',
   })
   @ApiQuery({ name: 'q', required: true, description: 'Поисковый запрос' })
   @ApiQuery({ name: 'page', required: false, type: Number })
@@ -40,7 +55,7 @@ export class AdminController {
   @ApiResponse({ status: 200, description: 'Результаты поиска получены' })
   async searchUsers(
     @Query('q') query: string,
-    @Query() pagination: PaginationQueryDto
+    @Query() pagination: PaginationQueryDto,
   ) {
     const { page, limit } = pagination.getPaginationParams();
     const result = await this.adminService.searchUsers(query, page, limit);
@@ -48,16 +63,16 @@ export class AdminController {
   }
 
   @Get('users/role/:role')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Получить пользователей по роли',
-    description: 'Возвращает пользователей с указанной ролью'
+    description: 'Возвращает пользователей с указанной ролью',
   })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiResponse({ status: 200, description: 'Пользователи по роли получены' })
   async getUsersByRole(
     @Param('role') role: UserRole,
-    @Query() pagination: PaginationQueryDto
+    @Query() pagination: PaginationQueryDto,
   ) {
     const { page, limit } = pagination.getPaginationParams();
     const result = await this.adminService.getUsersByRole(role, page, limit);
@@ -65,66 +80,73 @@ export class AdminController {
   }
 
   @Get('users/status/:status')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Получить пользователей по статусу',
-    description: 'Возвращает пользователей с указанным статусом'
+    description: 'Возвращает пользователей с указанным статусом',
   })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiResponse({ status: 200, description: 'Пользователи по статусу получены' })
   async getUsersByStatus(
     @Param('status') status: UserStatus,
-    @Query() pagination: PaginationQueryDto
+    @Query() pagination: PaginationQueryDto,
   ) {
     const { page, limit } = pagination.getPaginationParams();
-    const result = await this.adminService.getUsersByStatus(status, page, limit);
+    const result = await this.adminService.getUsersByStatus(
+      status,
+      page,
+      limit,
+    );
     return ResponseDto.success(result, 'Пользователи по статусу получены');
   }
 
   @Put('users/:id/role/:role')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Изменить роль пользователя',
-    description: 'Изменяет роль пользователя (USER/ADMIN)'
+    description: 'Изменяет роль пользователя (USER/ADMIN)',
   })
   @ApiResponse({ status: 200, description: 'Роль пользователя изменена' })
-  @ApiResponse({ status: 400, description: 'Нельзя удалить последнего администратора' })
-  async updateUserRole(
-    @Param('id') id: number,
-    @Param('role') role: UserRole
-  ) {
+  @ApiResponse({
+    status: 400,
+    description: 'Нельзя удалить последнего администратора',
+  })
+  async updateUserRole(@Param('id') id: number, @Param('role') role: UserRole) {
     const result = await this.adminService.updateRole(id, role);
     return ResponseDto.success(result, 'Роль пользователя изменена');
   }
 
   @Put('users/:id/status/:status')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Изменить статус пользователя',
-    description: 'Изменяет статус пользователя (ACTIVE/BANNED)'
+    description: 'Изменяет статус пользователя (ACTIVE/BANNED)',
   })
   @ApiResponse({ status: 200, description: 'Статус пользователя изменен' })
   async updateUserStatus(
     @Param('id') id: number,
-    @Param('status') status: UserStatus
+    @Param('status') status: UserStatus,
   ) {
     const result = await this.adminService.updateStatus(id, status);
     return ResponseDto.success(result, 'Статус пользователя изменен');
   }
 
   @Post('users/:id/make-admin')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Назначить администратором',
-    description: 'Назначает пользователя администратором'
+    description: 'Назначает пользователя администратором',
   })
-  @ApiResponse({ status: 200, description: 'Пользователь назначен администратором' })
+  @ApiResponse({
+    status: 200,
+    description: 'Пользователь назначен администратором',
+  })
   async makeAdmin(@Param('id') id: number) {
     const result = await this.adminService.makeAdmin(id);
     return ResponseDto.success(result, 'Пользователь назначен администратором');
   }
 
   @Post('users/:id/remove-admin')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Убрать права администратора',
-    description: 'Убирает права администратора у пользователя'
+    description: 'Убирает права администратора у пользователя',
   })
   @ApiResponse({ status: 200, description: 'Права администратора убраны' })
   async removeAdmin(@Param('id') id: number) {
@@ -133,9 +155,9 @@ export class AdminController {
   }
 
   @Post('users/:id/ban')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Заблокировать пользователя',
-    description: 'Блокирует пользователя'
+    description: 'Блокирует пользователя',
   })
   @ApiResponse({ status: 200, description: 'Пользователь заблокирован' })
   async banUser(@Param('id') id: number) {
@@ -144,9 +166,9 @@ export class AdminController {
   }
 
   @Post('users/:id/unban')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Разблокировать пользователя',
-    description: 'Разблокирует пользователя'
+    description: 'Разблокирует пользователя',
   })
   @ApiResponse({ status: 200, description: 'Пользователь разблокирован' })
   async unbanUser(@Param('id') id: number) {
@@ -155,9 +177,9 @@ export class AdminController {
   }
 
   @Get('statistics')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Статистика пользователей',
-    description: 'Возвращает общую статистику по пользователям'
+    description: 'Возвращает общую статистику по пользователям',
   })
   @ApiResponse({ status: 200, description: 'Статистика получена' })
   async getStatistics() {
@@ -166,9 +188,9 @@ export class AdminController {
   }
 
   @Get('users/:id')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Получить пользователя по ID',
-    description: 'Возвращает информацию о конкретном пользователе'
+    description: 'Возвращает информацию о конкретном пользователе',
   })
   @ApiResponse({ status: 200, description: 'Пользователь найден' })
   @ApiResponse({ status: 404, description: 'Пользователь не найден' })
@@ -178,9 +200,9 @@ export class AdminController {
   }
 
   @Post('users/:id/verify-email')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Подтвердить email пользователя',
-    description: 'Подтверждает email пользователя администратором'
+    description: 'Подтверждает email пользователя администратором',
   })
   @ApiResponse({ status: 200, description: 'Email подтвержден' })
   @ApiResponse({ status: 404, description: 'Пользователь не найден' })

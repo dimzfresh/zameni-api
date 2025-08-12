@@ -63,14 +63,17 @@ jobs:
       
     - name: Setup test environment
       run: |
-        cp .env.example .env.performance
-        echo "NODE_ENV=test" >> .env.performance
+        # Create performance test environment file
+        echo "NODE_ENV=test" > .env.performance
         echo "DB_HOST=localhost" >> .env.performance
         echo "DB_PORT=5432" >> .env.performance
         echo "DB_DATABASE=zameni_performance" >> .env.performance
         echo "DB_USERNAME=postgres" >> .env.performance
         echo "DB_PASSWORD=postgres" >> .env.performance
         echo "JWT_SECRET=performance-test-secret" >> .env.performance
+        echo "JWT_EXPIRES_IN=7d" >> .env.performance
+        echo "LOG_LEVEL=debug" >> .env.performance
+        echo "PORT=3000" >> .env.performance
         
     - name: Wait for database
       run: |
@@ -78,10 +81,25 @@ jobs:
         timeout 60 bash -c 'until pg_isready -h localhost -p 5432 -U postgres; do sleep 1; done'
         echo "✅ PostgreSQL is ready"
         
-    - name: Run database migrations
-      run: npm run migration:run
+    - name: Setup database schema
+      run: |
+        echo "Setting up database schema for performance tests..."
+        # Create tables if they don't exist (basic setup)
+        psql -h localhost -U postgres -d zameni_performance -c "
+          CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            role VARCHAR(50) DEFAULT 'user',
+            status VARCHAR(50) DEFAULT 'active',
+            email_verified_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        "
       env:
-        NODE_ENV: test
+        PGPASSWORD: postgres
         
     - name: Start application
       run: |

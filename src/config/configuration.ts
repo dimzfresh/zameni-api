@@ -2,7 +2,7 @@ import { getCurrentConfig } from './environments';
 
 export default () => {
   const config = getCurrentConfig();
-  
+
   return {
     port: config.port,
     nodeEnv: config.nodeEnv,

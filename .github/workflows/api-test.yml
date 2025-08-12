@@ -63,14 +63,17 @@ jobs:
       
     - name: Setup test environment
       run: |
-        cp .env.example .env.api-test
-        echo "NODE_ENV=test" >> .env.api-test
+        # Create API test environment file
+        echo "NODE_ENV=test" > .env.api-test
         echo "DB_HOST=localhost" >> .env.api-test
         echo "DB_PORT=5432" >> .env.api-test
         echo "DB_DATABASE=zameni_api_test" >> .env.api-test
         echo "DB_USERNAME=postgres" >> .env.api-test
         echo "DB_PASSWORD=postgres" >> .env.api-test
         echo "JWT_SECRET=api-test-secret" >> .env.api-test
+        echo "JWT_EXPIRES_IN=7d" >> .env.api-test
+        echo "LOG_LEVEL=debug" >> .env.api-test
+        echo "PORT=3000" >> .env.api-test
         
     - name: Wait for database
       run: |
@@ -78,10 +81,25 @@ jobs:
         timeout 60 bash -c 'until pg_isready -h localhost -p 5432 -U postgres; do sleep 1; done'
         echo "✅ PostgreSQL is ready"
         
-    - name: Run database migrations
-      run: npm run migration:run
+    - name: Setup database schema
+      run: |
+        echo "Setting up database schema for API tests..."
+        # Create tables if they don't exist (basic setup)
+        psql -h localhost -U postgres -d zameni_api_test -c "
+          CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            role VARCHAR(50) DEFAULT 'user',
+            status VARCHAR(50) DEFAULT 'active',
+            email_verified_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        "
       env:
-        NODE_ENV: test
+        PGPASSWORD: postgres
         
     - name: Start application for local testing
       if: github.event.inputs.environment == 'local'

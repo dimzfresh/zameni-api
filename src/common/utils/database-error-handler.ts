@@ -1,4 +1,8 @@
-import { BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 
 /**
  * Обработчик ошибок базы данных PostgreSQL
@@ -12,9 +16,11 @@ export class DatabaseErrorHandler {
     console.error(`Ошибка базы данных при ${operation}:`, error);
 
     // Если это уже наше кастомное исключение, пробрасываем его
-    if (error instanceof BadRequestException || 
-        error instanceof ConflictException || 
-        error instanceof InternalServerErrorException) {
+    if (
+      error instanceof BadRequestException ||
+      error instanceof ConflictException ||
+      error instanceof InternalServerErrorException
+    ) {
       throw error;
     }
 
@@ -22,31 +28,39 @@ export class DatabaseErrorHandler {
     switch (error.code) {
       case '23505': // unique_violation
         throw new ConflictException('Запись с такими данными уже существует');
-      
+
       case '23502': // not_null_violation
         throw new BadRequestException('Не все обязательные поля заполнены');
-      
+
       case '23503': // foreign_key_violation
-        throw new BadRequestException('Нельзя выполнить операцию из-за связанных данных');
-      
+        throw new BadRequestException(
+          'Нельзя выполнить операцию из-за связанных данных',
+        );
+
       case '23514': // check_violation
         throw new BadRequestException('Данные не соответствуют ограничениям');
-      
+
       case '42P01': // undefined_table
-        throw new InternalServerErrorException('Ошибка конфигурации базы данных');
-      
+        throw new InternalServerErrorException(
+          'Ошибка конфигурации базы данных',
+        );
+
       case '42703': // undefined_column
         throw new InternalServerErrorException('Ошибка структуры базы данных');
-      
+
       case 'ECONNREFUSED':
-        throw new InternalServerErrorException('Не удается подключиться к базе данных');
-      
+        throw new InternalServerErrorException(
+          'Не удается подключиться к базе данных',
+        );
+
       case 'ENOTFOUND':
         throw new InternalServerErrorException('База данных недоступна');
-      
+
       default:
         // Для неизвестных ошибок возвращаем общее сообщение
-        throw new BadRequestException(`Ошибка при выполнении операции "${operation}". Попробуйте позже.`);
+        throw new BadRequestException(
+          `Ошибка при выполнении операции "${operation}". Попробуйте позже.`,
+        );
     }
   }
 
@@ -54,7 +68,11 @@ export class DatabaseErrorHandler {
    * Проверяет, является ли ошибка ошибкой базы данных
    */
   static isDatabaseError(error: any): boolean {
-    return error.code && (
+    if (!error || !error.code) {
+      return false;
+    }
+
+    return (
       error.code.startsWith('23') || // PostgreSQL constraint violations
       error.code.startsWith('42') || // PostgreSQL syntax errors
       error.code === 'ECONNREFUSED' ||
@@ -71,7 +89,7 @@ export class DatabaseErrorHandler {
       message: error.message,
       detail: error.detail,
       context,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 }

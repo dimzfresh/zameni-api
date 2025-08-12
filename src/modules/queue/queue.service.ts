@@ -25,7 +25,11 @@ export class QueueService implements OnModuleInit {
   /**
    * Отправка сообщения в очередь
    */
-  async send(topic: string | QueueTopic, data: any, options: QueueOptions = {}): Promise<string> {
+  async send(
+    topic: string | QueueTopic,
+    data: any,
+    options: QueueOptions = {},
+  ): Promise<string> {
     return this.queueEngine.send(topic, data, options);
   }
 
@@ -58,39 +62,39 @@ export class QueueService implements OnModuleInit {
     this.queueEngine.subscribe(QueueTopic.USER_REGISTRATION, {
       handle: async (message) => {
         await this.userRegistrationProcessor.process(message);
-      }
+      },
     });
 
     // Обработчики для аутентификации пользователей
     this.queueEngine.subscribe(QueueTopic.USER_LOGIN, {
       handle: async (message) => {
         await this.userAuthProcessor.process(message);
-      }
+      },
     });
 
     this.queueEngine.subscribe(QueueTopic.USER_REFRESH, {
       handle: async (message) => {
         await this.userAuthProcessor.process(message);
-      }
+      },
     });
 
     this.queueEngine.subscribe(QueueTopic.USER_LOGOUT, {
       handle: async (message) => {
         await this.userAuthProcessor.process(message);
-      }
+      },
     });
 
     this.queueEngine.subscribe(QueueTopic.USER_DELETE, {
       handle: async (message) => {
         await this.userAuthProcessor.process(message);
-      }
+      },
     });
 
     // Обработчик для отправки уведомлений
     this.queueEngine.subscribe(QueueTopic.NOTIFICATION_SEND, {
       handle: async (message) => {
         await this.notificationProcessor.process(message);
-      }
+      },
     });
 
     this.logger.log('Queue handlers setup completed');

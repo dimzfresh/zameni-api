@@ -1,7 +1,17 @@
-import { IsEmail, IsString, IsOptional, MinLength, MaxLength, IsEnum } from 'class-validator';
+import {
+  IsEmail,
+  IsString,
+  IsOptional,
+  MinLength,
+  MaxLength,
+  IsEnum,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { UserRole, UserStatus } from '../../../entities/user.entity';
-import { IsPhoneNumber, IsDigitsOnly } from '../../../common/validators/phone.validator';
+import {
+  IsPhoneNumber,
+  IsDigitsOnly,
+} from '../../../common/validators/phone.validator';
 
 export class UpdateUserDto {
   @ApiProperty({ example: 'ivan@example.com', required: false })
@@ -9,23 +19,33 @@ export class UpdateUserDto {
   @IsEmail()
   email?: string;
 
-  @ApiProperty({ example: 'Иван Петров', required: false, minLength: 2, maxLength: 50 })
+  @ApiProperty({
+    example: 'Иван Петров',
+    required: false,
+    minLength: 2,
+    maxLength: 50,
+  })
   @IsOptional()
   @IsString()
   @MinLength(2)
   @MaxLength(50)
   name?: string;
 
-  @ApiProperty({ example: 'Опытный разработчик', required: false, maxLength: 500 })
+  @ApiProperty({
+    example: 'Опытный разработчик',
+    required: false,
+    maxLength: 500,
+  })
   @IsOptional()
   @IsString()
   @MaxLength(500)
   bio?: string;
 
-  @ApiProperty({ 
-    example: '+7 (999) 123-45-67', 
+  @ApiProperty({
+    example: '+7 (999) 123-45-67',
     required: false,
-    description: 'Номер телефона. Поддерживает форматы: +7 (999) 123-45-67, +1234567890'
+    description:
+      'Номер телефона. Поддерживает форматы: +7 (999) 123-45-67, +1234567890',
   })
   @IsOptional()
   @IsString()
@@ -37,11 +57,11 @@ export class UpdateUserDto {
   @IsString()
   avatar?: string;
 
-  @ApiProperty({ 
-    enum: UserRole, 
+  @ApiProperty({
+    enum: UserRole,
     required: false,
     description: 'USER - обычный пользователь, ADMIN - администратор',
-    example: 'user'
+    example: 'user',
   })
   @IsOptional()
   @IsEnum(UserRole)
@@ -54,23 +74,33 @@ export class UpdateUserDto {
 }
 
 export class UpdateProfileDto {
-  @ApiProperty({ example: 'Иван Петров', required: false, minLength: 2, maxLength: 50 })
+  @ApiProperty({
+    example: 'Иван Петров',
+    required: false,
+    minLength: 2,
+    maxLength: 50,
+  })
   @IsOptional()
   @IsString()
   @MinLength(2)
   @MaxLength(50)
   name?: string;
 
-  @ApiProperty({ example: 'Опытный разработчик', required: false, maxLength: 500 })
+  @ApiProperty({
+    example: 'Опытный разработчик',
+    required: false,
+    maxLength: 500,
+  })
   @IsOptional()
   @IsString()
   @MaxLength(500)
   bio?: string;
 
-  @ApiProperty({ 
-    example: '+7 (999) 123-45-67', 
+  @ApiProperty({
+    example: '+7 (999) 123-45-67',
     required: false,
-    description: 'Номер телефона. Поддерживает форматы: +7 (999) 123-45-67, +1234567890'
+    description:
+      'Номер телефона. Поддерживает форматы: +7 (999) 123-45-67, +1234567890',
   })
   @IsOptional()
   @IsString()

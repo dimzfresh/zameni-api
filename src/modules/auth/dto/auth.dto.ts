@@ -51,7 +51,7 @@ export class AuthResponseDto {
       emailVerifiedAt: '2024-01-01T00:00:00.000Z',
       lastLoginAt: '2024-01-01T00:00:00.000Z',
       createdAt: '2024-01-01T00:00:00.000Z',
-    }
+    },
   })
   user: {
     id: number;
@@ -97,15 +97,24 @@ export class RegistrationStatusDto {
   @ApiProperty({ example: 'msg_1234567890_abc123def' })
   messageId: string;
 
-  @ApiProperty({ example: 'pending', enum: ['pending', 'processing', 'completed', 'failed'] })
+  @ApiProperty({
+    example: 'pending',
+    enum: ['pending', 'processing', 'completed', 'failed'],
+  })
   status: 'pending' | 'processing' | 'completed' | 'failed';
 
   @ApiProperty({ example: '2024-01-15T10:30:00Z' })
   timestamp: string;
 
-  @ApiProperty({ example: 'User registration completed successfully', required: false })
+  @ApiProperty({
+    example: 'User registration completed successfully',
+    required: false,
+  })
   message?: string;
 
-  @ApiProperty({ example: { id: 1, email: 'user@example.com' }, required: false })
+  @ApiProperty({
+    example: { id: 1, email: 'user@example.com' },
+    required: false,
+  })
   result?: any;
 }

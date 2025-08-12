@@ -1,8 +1,9 @@
 import { developmentConfig } from './development.config';
 import { stagingConfig } from './staging.config';
 import { productionConfig } from './production.config';
+import { testConfig } from './test.config';
 
-export type Environment = 'development' | 'staging' | 'production';
+export type Environment = 'development' | 'staging' | 'production' | 'test';
 
 export interface AppConfig {
   port: number;
@@ -50,15 +51,16 @@ const configs: Record<Environment, AppConfig> = {
   development: developmentConfig,
   staging: stagingConfig,
   production: productionConfig,
+  test: testConfig,
 };
 
 export function getConfig(environment: Environment = 'development'): AppConfig {
   const config = configs[environment];
-  
+
   if (!config) {
     throw new Error(`Configuration for environment '${environment}' not found`);
   }
-  
+
   return config;
 }
 
@@ -67,4 +69,4 @@ export function getCurrentConfig(): AppConfig {
   return getConfig(environment);
 }
 
-export { developmentConfig, stagingConfig, productionConfig };
+export { developmentConfig, stagingConfig, productionConfig, testConfig };

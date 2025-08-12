@@ -1,4 +1,8 @@
-import { PORTS, CORS_ORIGINS, RATE_LIMIT } from '../../common/constants/app.constants';
+import {
+  PORTS,
+  CORS_ORIGINS,
+  RATE_LIMIT,
+} from '../../common/constants/app.constants';
 
 export const developmentConfig = {
   port: PORTS.DEFAULT,

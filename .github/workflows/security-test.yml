@@ -80,7 +80,7 @@ jobs:
         echo "🕷️ Running OWASP ZAP security scan..."
         
         # Запускаем приложение для сканирования
-        docker-compose -f docker-compose.test.yml up -d
+        docker-compose -f docker-compose.development.yml up -d
         
         # Ждем запуска приложения
         sleep 30

@@ -15,6 +15,8 @@ export abstract class BaseQueueProcessor implements QueueProcessor {
   }
 
   protected logError(messageId: string, error: Error): void {
-    this.logger.error(`Error processing message ${messageId}: ${error.message}`);
+    this.logger.error(
+      `Error processing message ${messageId}: ${error.message}`,
+    );
   }
 }

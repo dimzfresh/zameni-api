@@ -9,13 +9,14 @@ export class NotificationProcessor extends BaseQueueProcessor {
 
     try {
       // Здесь будет реальная отправка уведомлений
-      this.logger.log(`Notification processed: ${JSON.stringify(message.data)}`);
-      
+      this.logger.log(
+        `Notification processed: ${JSON.stringify(message.data)}`,
+      );
+
       // Имитируем отправку email/SMS
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       this.logSuccess(message.id);
-      
     } catch (error) {
       this.logError(message.id, error);
       throw error;

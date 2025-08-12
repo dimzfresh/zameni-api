@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserRole, UserStatus } from '../../entities/user.entity';
@@ -12,13 +17,18 @@ export class UserService {
     public readonly userRepository: Repository<User>,
   ) {}
 
-  async create(registerDto: RegisterDto, role: UserRole = UserRole.USER): Promise<User> {
+  async create(
+    registerDto: RegisterDto,
+    role: UserRole = UserRole.USER,
+  ): Promise<User> {
     try {
       // Проверяем, существует ли пользователь с таким email
       const existingUser = await this.findByEmail(registerDto.email);
 
       if (existingUser) {
-        throw new ConflictException('Пользователь с таким email уже существует');
+        throw new ConflictException(
+          'Пользователь с таким email уже существует',
+        );
       }
 
       // Создаем нового пользователя
@@ -32,7 +42,7 @@ export class UserService {
 
       // Сохраняем пользователя в базу данных
       const savedUser = await this.userRepository.save(user);
-      
+
       if (!savedUser) {
         throw new BadRequestException('Не удалось создать пользователя');
       }
@@ -40,10 +50,13 @@ export class UserService {
       return savedUser;
     } catch (error) {
       // Если это наша кастомная ошибка, пробрасываем её
-      if (error instanceof ConflictException || error instanceof BadRequestException) {
+      if (
+        error instanceof ConflictException ||
+        error instanceof BadRequestException
+      ) {
         throw error;
       }
-      
+
       // Обрабатываем ошибки базы данных
       DatabaseErrorHandler.handle(error, 'создании пользователя');
     }
@@ -67,8 +80,6 @@ export class UserService {
     });
   }
 
-
-
   async update(id: number, updateData: Partial<User>): Promise<User> {
     try {
       const user = await this.findById(id);
@@ -77,14 +88,16 @@ export class UserService {
       if (updateData.email && updateData.email !== user.email) {
         const existingUser = await this.findByEmail(updateData.email);
         if (existingUser) {
-          throw new ConflictException('Пользователь с таким email уже существует');
+          throw new ConflictException(
+            'Пользователь с таким email уже существует',
+          );
         }
       }
 
       // Обновляем пользователя
       Object.assign(user, updateData);
       const updatedUser = await this.userRepository.save(user);
-      
+
       if (!updatedUser) {
         throw new BadRequestException('Не удалось обновить пользователя');
       }
@@ -92,10 +105,14 @@ export class UserService {
       return updatedUser;
     } catch (error) {
       // Если это наша кастомная ошибка, пробрасываем её
-      if (error instanceof ConflictException || error instanceof BadRequestException || error instanceof NotFoundException) {
+      if (
+        error instanceof ConflictException ||
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
-      
+
       // Обрабатываем ошибки базы данных
       DatabaseErrorHandler.handle(error, 'обновлении пользователя');
     }
@@ -105,16 +122,19 @@ export class UserService {
     try {
       const user = await this.findById(id);
       const result = await this.userRepository.remove(user);
-      
+
       if (!result) {
         throw new BadRequestException('Не удалось удалить пользователя');
       }
     } catch (error) {
       // Если это наша кастомная ошибка, пробрасываем её
-      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
         throw error;
       }
-      
+
       // Обрабатываем ошибки базы данных
       DatabaseErrorHandler.handle(error, 'удалении пользователя');
     }
@@ -136,7 +156,10 @@ export class UserService {
     await this.delete(id);
   }
 
-  async updateRefreshToken(id: number, refreshToken: string | null): Promise<void> {
+  async updateRefreshToken(
+    id: number,
+    refreshToken: string | null,
+  ): Promise<void> {
     await this.userRepository.update(id, {
       refreshToken: refreshToken || undefined,
     });
@@ -180,14 +203,15 @@ export class UserService {
 
     return {
       total: inactiveUsers.length,
-      withEmailVerified: inactiveUsers.filter(u => u.emailVerifiedAt).length,
-      withoutEmailVerified: inactiveUsers.filter(u => !u.emailVerifiedAt).length,
+      withEmailVerified: inactiveUsers.filter((u) => u.emailVerifiedAt).length,
+      withoutEmailVerified: inactiveUsers.filter((u) => !u.emailVerifiedAt)
+        .length,
     };
   }
 
   async findAll(page: number = 1, limit: number = 10) {
     const skip = (page - 1) * limit;
-    
+
     const [users, total] = await this.userRepository.findAndCount({
       skip,
       take: limit,
@@ -195,7 +219,7 @@ export class UserService {
     });
 
     return {
-      users: users.map(user => {
+      users: users.map((user) => {
         const { password, ...userWithoutPassword } = user;
         return userWithoutPassword;
       }),
@@ -210,17 +234,19 @@ export class UserService {
 
   async searchUsers(query: string, page: number = 1, limit: number = 10) {
     const skip = (page - 1) * limit;
-    
+
     const [users, total] = await this.userRepository
       .createQueryBuilder('user')
-      .where('user.email ILIKE :query OR user.name ILIKE :query', { query: `%${query}%` })
+      .where('user.email ILIKE :query OR user.name ILIKE :query', {
+        query: `%${query}%`,
+      })
       .skip(skip)
       .take(limit)
       .orderBy('user.createdAt', 'DESC')
       .getManyAndCount();
 
     return {
-      users: users.map(user => {
+      users: users.map((user) => {
         const { password, ...userWithoutPassword } = user;
         return userWithoutPassword;
       }),
@@ -235,7 +261,7 @@ export class UserService {
 
   async getUsersByRole(role: UserRole, page: number = 1, limit: number = 10) {
     const skip = (page - 1) * limit;
-    
+
     const [users, total] = await this.userRepository.findAndCount({
       where: { role },
       skip,
@@ -244,7 +270,7 @@ export class UserService {
     });
 
     return {
-      users: users.map(user => {
+      users: users.map((user) => {
         const { password, ...userWithoutPassword } = user;
         return userWithoutPassword;
       }),
@@ -257,9 +283,13 @@ export class UserService {
     };
   }
 
-  async getUsersByStatus(status: UserStatus, page: number = 1, limit: number = 10) {
+  async getUsersByStatus(
+    status: UserStatus,
+    page: number = 1,
+    limit: number = 10,
+  ) {
     const skip = (page - 1) * limit;
-    
+
     const [users, total] = await this.userRepository.findAndCount({
       where: { status },
       skip,
@@ -268,7 +298,7 @@ export class UserService {
     });
 
     return {
-      users: users.map(user => {
+      users: users.map((user) => {
         const { password, ...userWithoutPassword } = user;
         return userWithoutPassword;
       }),
@@ -282,13 +312,17 @@ export class UserService {
   }
 
   async getUsersStatistics() {
-    const [totalUsers, activeUsers, bannedUsers, admins, verifiedUsers] = await Promise.all([
-      this.userRepository.count(),
-      this.userRepository.count({ where: { status: UserStatus.ACTIVE } }),
-      this.userRepository.count({ where: { status: UserStatus.BANNED } }),
-      this.userRepository.count({ where: { role: UserRole.ADMIN } }),
-      this.userRepository.createQueryBuilder('user').where('user.emailVerifiedAt IS NOT NULL').getCount(),
-    ]);
+    const [totalUsers, activeUsers, bannedUsers, admins, verifiedUsers] =
+      await Promise.all([
+        this.userRepository.count(),
+        this.userRepository.count({ where: { status: UserStatus.ACTIVE } }),
+        this.userRepository.count({ where: { status: UserStatus.BANNED } }),
+        this.userRepository.count({ where: { role: UserRole.ADMIN } }),
+        this.userRepository
+          .createQueryBuilder('user')
+          .where('user.emailVerifiedAt IS NOT NULL')
+          .getCount(),
+      ]);
 
     return {
       total: totalUsers,

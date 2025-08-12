@@ -1,5 +1,10 @@
 import { Controller, Get, Post, Delete, Body, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { QueueService } from './queue.service';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { ResponseDto } from '../../common/dto/response.dto';
@@ -24,16 +29,13 @@ export class QueueController {
   @ApiOperation({ summary: 'Отправить тестовое сообщение в очередь' })
   @ApiResponse({ status: 200, description: 'Сообщение отправлено' })
   async sendMessage(
-    @Body() body: { topic: string; data: any; priority?: QueuePriority }
+    @Body() body: { topic: string; data: any; priority?: QueuePriority },
   ): Promise<ResponseDto<{ messageId: string }>> {
     const messageId = await this.queueService.send(body.topic, body.data, {
       priority: body.priority || QueuePriority.NORMAL,
     });
-    
-    return ResponseDto.success(
-      { messageId },
-      'Сообщение отправлено в очередь'
-    );
+
+    return ResponseDto.success({ messageId }, 'Сообщение отправлено в очередь');
   }
 
   @Delete('clear')

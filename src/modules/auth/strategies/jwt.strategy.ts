@@ -24,9 +24,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload) {
     // Проверяем, что это access token, а не refresh token
     if (payload.type === 'refresh') {
-      throw new UnauthorizedException('Используйте access token для доступа к защищенным ресурсам');
+      throw new UnauthorizedException(
+        'Используйте access token для доступа к защищенным ресурсам',
+      );
     }
-    
+
     return {
       id: payload.sub,
       email: payload.email,

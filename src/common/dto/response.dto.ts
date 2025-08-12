@@ -47,9 +47,9 @@ export class PaginatedResponseDto<T> extends ResponseDto<T[]> {
     message?: string,
   ) {
     super(true, data, message);
-    
+
     const totalPages = Math.ceil(total / limit);
-    
+
     this.pagination = {
       page,
       limit,

@@ -1,5 +1,9 @@
 import { validate } from 'class-validator';
-import { IsPhoneNumber, IsDigitsOnly, IsPhoneNumberWithMinLength } from './phone.validator';
+import {
+  IsPhoneNumber,
+  IsDigitsOnly,
+  IsPhoneNumberWithMinLength,
+} from './phone.validator';
 
 class TestPhoneDto {
   @IsPhoneNumber()
@@ -20,7 +24,7 @@ describe('Phone Validators', () => {
   describe('IsPhoneNumber', () => {
     it('should validate Russian phone numbers', async () => {
       const dto = new TestPhoneDto();
-      
+
       // Валидные номера
       dto.phone = '+7 (999) 123-45-67';
       let errors = await validate(dto);
@@ -45,7 +49,7 @@ describe('Phone Validators', () => {
 
     it('should validate international phone numbers', async () => {
       const dto = new TestPhoneDto();
-      
+
       dto.phone = '+1234567890';
       let errors = await validate(dto);
       expect(errors).toHaveLength(0);
@@ -61,7 +65,7 @@ describe('Phone Validators', () => {
 
     it('should reject invalid phone numbers', async () => {
       const dto = new TestPhoneDto();
-      
+
       // Слишком короткий
       dto.phone = '123456';
       let errors = await validate(dto);
@@ -85,7 +89,7 @@ describe('Phone Validators', () => {
 
     it('should allow empty values for optional fields', async () => {
       const dto = new TestPhoneDto();
-      
+
       dto.phone = '';
       let errors = await validate(dto);
       expect(errors).toHaveLength(0);
@@ -103,7 +107,7 @@ describe('Phone Validators', () => {
   describe('IsDigitsOnly', () => {
     it('should validate digits only', async () => {
       const dto = new TestDigitsOnlyDto();
-      
+
       dto.phone = '1234567890';
       let errors = await validate(dto);
       expect(errors).toHaveLength(0);
@@ -115,7 +119,7 @@ describe('Phone Validators', () => {
 
     it('should reject non-digits', async () => {
       const dto = new TestDigitsOnlyDto();
-      
+
       dto.phone = '123-456-7890';
       let errors = await validate(dto);
       expect(errors.length).toBeGreaterThan(0);
@@ -133,7 +137,7 @@ describe('Phone Validators', () => {
   describe('IsPhoneNumberWithMinLength', () => {
     it('should validate minimum length', async () => {
       const dto = new TestMinLengthDto();
-      
+
       dto.phone = '1234567890'; // 10 цифр
       let errors = await validate(dto);
       expect(errors).toHaveLength(0);
@@ -145,7 +149,7 @@ describe('Phone Validators', () => {
 
     it('should reject numbers shorter than minimum', async () => {
       const dto = new TestMinLengthDto();
-      
+
       dto.phone = '123456789'; // 9 цифр
       let errors = await validate(dto);
       expect(errors.length).toBeGreaterThan(0);

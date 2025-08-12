@@ -10,11 +10,7 @@ import { NotificationProcessor } from './processors/notification.processor';
 import { ServicesModule } from '../../common/services/services.module';
 
 @Module({
-  imports: [
-    ConfigModule, 
-    EventEmitterModule.forRoot(),
-    ServicesModule
-  ],
+  imports: [ConfigModule, EventEmitterModule.forRoot(), ServicesModule],
   providers: [
     QueueService,
     QueueEngineService,

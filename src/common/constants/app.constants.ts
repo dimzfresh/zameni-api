@@ -122,8 +122,8 @@ export const PORTS = {
 export const CORS_ORIGINS = {
   DEVELOPMENT: [
     'http://localhost:3000',
-    'http://localhost:3001', 
-    'http://localhost:8080'
+    'http://localhost:3001',
+    'http://localhost:8080',
   ],
 } as const;
 

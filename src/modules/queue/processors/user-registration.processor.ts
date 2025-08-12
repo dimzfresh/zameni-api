@@ -16,17 +16,16 @@ export class UserRegistrationProcessor extends BaseQueueProcessor {
     try {
       // Создаем пользователя в БД
       const user = await this.userService.create(message.data, UserRole.USER);
-      
+
       // Обновляем время последнего входа
       await this.userService.updateLastLogin(user.id);
-      
+
       this.logSuccess(message.id);
-      
+
       // Здесь можно добавить дополнительные действия:
       // - Отправка приветственного email
       // - Создание профиля
       // - Аналитика
-      
     } catch (error) {
       this.logError(message.id, error);
       throw error;

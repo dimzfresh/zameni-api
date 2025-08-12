@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { RegisterDto, LoginDto, AuthResponseDto } from './dto/auth.dto.js';
@@ -65,14 +69,14 @@ export class AuthService {
     try {
       // Проверяем refresh token
       const payload = this.jwtService.verify(refreshToken);
-      
+
       if (payload.type !== 'refresh') {
         throw new UnauthorizedException('Неверный тип токена');
       }
 
       const userId = payload.sub;
       const user = await this.userService.findById(userId);
-      
+
       if (!user) {
         throw new UnauthorizedException('Пользователь не найден');
       }
@@ -99,7 +103,7 @@ export class AuthService {
   async logout(userId: number): Promise<void> {
     // Очищаем refresh token
     await this.userService.updateRefreshToken(userId, null);
-    
+
     // В будущем здесь можно добавить:
     // 1. Добавить токен в blacklist (Redis)
     // 2. Уменьшить время жизни access token
@@ -109,7 +113,7 @@ export class AuthService {
   async deleteAccount(userId: number): Promise<void> {
     // Очищаем refresh token перед удалением
     await this.userService.updateRefreshToken(userId, null);
-    
+
     // Удаляем пользователя из БД
     await this.userService.delete(userId);
   }

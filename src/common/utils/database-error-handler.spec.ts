@@ -1,11 +1,15 @@
-import { ConflictException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import {
+  ConflictException,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { DatabaseErrorHandler } from './database-error-handler';
 
 describe('DatabaseErrorHandler', () => {
   describe('handle', () => {
     it('should throw ConflictException for unique constraint violation', () => {
       const error = { code: '23505', message: 'duplicate key value' };
-      
+
       expect(() => {
         DatabaseErrorHandler.handle(error, 'создании пользователя');
       }).toThrow(ConflictException);
@@ -13,7 +17,7 @@ describe('DatabaseErrorHandler', () => {
 
     it('should throw BadRequestException for not null constraint violation', () => {
       const error = { code: '23502', message: 'null value in column' };
-      
+
       expect(() => {
         DatabaseErrorHandler.handle(error, 'создании пользователя');
       }).toThrow(BadRequestException);
@@ -21,7 +25,7 @@ describe('DatabaseErrorHandler', () => {
 
     it('should throw BadRequestException for foreign key violation', () => {
       const error = { code: '23503', message: 'foreign key violation' };
-      
+
       expect(() => {
         DatabaseErrorHandler.handle(error, 'удалении пользователя');
       }).toThrow(BadRequestException);
@@ -29,7 +33,7 @@ describe('DatabaseErrorHandler', () => {
 
     it('should throw InternalServerErrorException for connection refused', () => {
       const error = { code: 'ECONNREFUSED', message: 'connection refused' };
-      
+
       expect(() => {
         DatabaseErrorHandler.handle(error, 'подключении к БД');
       }).toThrow(InternalServerErrorException);
@@ -37,7 +41,7 @@ describe('DatabaseErrorHandler', () => {
 
     it('should re-throw existing custom exceptions', () => {
       const customError = new ConflictException('Custom error');
-      
+
       expect(() => {
         DatabaseErrorHandler.handle(customError, 'операции');
       }).toThrow(ConflictException);
@@ -45,7 +49,7 @@ describe('DatabaseErrorHandler', () => {
 
     it('should throw BadRequestException for unknown errors', () => {
       const error = { code: 'UNKNOWN', message: 'unknown error' };
-      
+
       expect(() => {
         DatabaseErrorHandler.handle(error, 'тестовой операции');
       }).toThrow(BadRequestException);

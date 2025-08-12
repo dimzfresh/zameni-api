@@ -1,12 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { 
-  QueueMessage, 
-  QueueOptions, 
-  QueueHandler, 
+import {
+  QueueMessage,
+  QueueOptions,
+  QueueHandler,
   QueueStats,
-  IQueueService 
+  IQueueService,
 } from './interfaces/queue.interface';
 import { QueuePriority, QueueTopic } from './enums/queue.enum';
 import { IdGenerator } from '../../common/utils/id-generator';
@@ -25,9 +25,15 @@ export class QueueEngineService implements IQueueService {
     private configService: ConfigService,
     private eventEmitter: EventEmitter2,
   ) {
-    this.maxRetries = this.configService.get('queue.maxRetries', TIMEOUTS.QUEUE_MAX_RETRIES);
-    this.timeout = this.configService.get('queue.timeout', TIMEOUTS.QUEUE_PROCESSING);
-    
+    this.maxRetries = this.configService.get(
+      'queue.maxRetries',
+      TIMEOUTS.QUEUE_MAX_RETRIES,
+    );
+    this.timeout = this.configService.get(
+      'queue.timeout',
+      TIMEOUTS.QUEUE_PROCESSING,
+    );
+
     // Подписываемся на события обработки сообщений
     this.eventEmitter.on('queue.message', (message: QueueMessage) => {
       this.processMessage(message);
@@ -37,7 +43,11 @@ export class QueueEngineService implements IQueueService {
   /**
    * Отправка сообщения в очередь
    */
-  async send(topic: string, data: any, options: QueueOptions = {}): Promise<string> {
+  async send(
+    topic: string,
+    data: any,
+    options: QueueOptions = {},
+  ): Promise<string> {
     const messageId = this.generateMessageId();
     const message: QueueMessage = {
       id: messageId,
@@ -54,7 +64,7 @@ export class QueueEngineService implements IQueueService {
     }
 
     const queue = this.queues.get(topic)!;
-    
+
     // Добавляем сообщение в очередь в зависимости от приоритета
     if (message.priority === QueuePriority.HIGH) {
       queue.unshift(message);
@@ -63,10 +73,10 @@ export class QueueEngineService implements IQueueService {
     }
 
     this.logger.log(`Message ${messageId} sent to queue ${topic}`);
-    
+
     // Эмитим событие для обработки
     this.eventEmitter.emit('queue.message', message);
-    
+
     return messageId;
   }
 
@@ -89,13 +99,15 @@ export class QueueEngineService implements IQueueService {
     }
 
     this.processing.add(message.id);
-    
+
     try {
-      this.logger.log(`Processing message ${message.id} from topic ${message.topic}`);
-      
+      this.logger.log(
+        `Processing message ${message.id} from topic ${message.topic}`,
+      );
+
       // Получаем обработчики для топика
       const topicHandlers = this.handlers.get(message.topic) || [];
-      
+
       if (topicHandlers.length === 0) {
         this.logger.warn(`No handlers found for topic: ${message.topic}`);
         return;
@@ -103,35 +115,45 @@ export class QueueEngineService implements IQueueService {
 
       // Устанавливаем таймаут
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Message processing timeout')), this.timeout);
+        setTimeout(
+          () => reject(new Error('Message processing timeout')),
+          this.timeout,
+        );
       });
 
       // Обрабатываем сообщение всеми обработчиками
-      const processPromises = topicHandlers.map(handler => handler.handle(message));
+      const processPromises = topicHandlers.map((handler) =>
+        handler.handle(message),
+      );
       const processPromise = Promise.all(processPromises);
-      
+
       await Promise.race([processPromise, timeoutPromise]);
-      
+
       // Удаляем сообщение из очереди после успешной обработки
       this.removeMessageFromQueue(message.topic, message.id);
-      
+
       this.logger.log(`Message ${message.id} processed successfully`);
-      
     } catch (error) {
-      this.logger.error(`Error processing message ${message.id}: ${error.message}`);
-      
+      this.logger.error(
+        `Error processing message ${message.id}: ${error.message}`,
+      );
+
       // Увеличиваем счетчик попыток
       message.retryCount = (message.retryCount || 0) + 1;
-      
+
       if (message.retryCount < this.maxRetries) {
         // Возвращаем сообщение в очередь для повторной обработки
-        this.logger.log(`Retrying message ${message.id} (attempt ${message.retryCount})`);
+        this.logger.log(
+          `Retrying message ${message.id} (attempt ${message.retryCount})`,
+        );
         setTimeout(() => {
           this.eventEmitter.emit('queue.message', message);
         }, TIMEOUTS.QUEUE_RETRY_DELAY * message.retryCount); // Экспоненциальная задержка
       } else {
         // Превышен лимит попыток - отправляем в dead letter queue
-        this.logger.error(`Message ${message.id} exceeded retry limit, moving to dead letter queue`);
+        this.logger.error(
+          `Message ${message.id} exceeded retry limit, moving to dead letter queue`,
+        );
         await this.sendToDeadLetterQueue(message);
         this.removeMessageFromQueue(message.topic, message.id);
       }
@@ -149,11 +171,11 @@ export class QueueEngineService implements IQueueService {
       topic: 'dead-letter',
       timestamp: new Date(),
     };
-    
+
     if (!this.queues.has('dead-letter')) {
       this.queues.set('dead-letter', []);
     }
-    
+
     this.queues.get('dead-letter')!.push(deadLetterMessage);
     this.logger.warn(`Message ${message.id} sent to dead letter queue`);
   }
@@ -164,7 +186,7 @@ export class QueueEngineService implements IQueueService {
   private removeMessageFromQueue(topic: string, messageId: string): void {
     const queue = this.queues.get(topic);
     if (queue) {
-      const index = queue.findIndex(msg => msg.id === messageId);
+      const index = queue.findIndex((msg) => msg.id === messageId);
       if (index !== -1) {
         queue.splice(index, 1);
       }
@@ -176,20 +198,21 @@ export class QueueEngineService implements IQueueService {
    */
   getQueueStats(): Record<string, QueueStats> {
     const stats: Record<string, QueueStats> = {};
-    
+
     for (const [topic, queue] of this.queues.entries()) {
-      const processingCount = Array.from(this.processing).filter(id => 
-        queue.some(msg => msg.id === id)
+      const processingCount = Array.from(this.processing).filter((id) =>
+        queue.some((msg) => msg.id === id),
       ).length;
 
       stats[topic] = {
         pending: queue.length,
         processing: processingCount,
         oldestMessage: queue.length > 0 ? queue[0].timestamp : null,
-        failed: queue.filter(msg => (msg.retryCount || 0) >= this.maxRetries).length,
+        failed: queue.filter((msg) => (msg.retryCount || 0) >= this.maxRetries)
+          .length,
       };
     }
-    
+
     return stats;
   }
 
@@ -199,7 +222,7 @@ export class QueueEngineService implements IQueueService {
   async getMessageStatus(messageId: string): Promise<any> {
     // Ищем сообщение в очереди
     for (const [topic, queue] of this.queues.entries()) {
-      const message = queue.find(msg => msg.id === messageId);
+      const message = queue.find((msg) => msg.id === messageId);
       if (message) {
         return {
           messageId,

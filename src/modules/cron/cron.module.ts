@@ -6,10 +6,7 @@ import { ServicesModule } from '../../common/services/services.module';
 import { QueueModule } from '../queue/queue.module';
 
 @Module({
-  imports: [
-    ServicesModule,
-    QueueModule,
-  ],
+  imports: [ServicesModule, QueueModule],
   providers: [CronService],
   controllers: [CronController],
   exports: [CronService],

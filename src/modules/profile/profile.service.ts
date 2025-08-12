@@ -30,13 +30,13 @@ export class ProfileService {
     if (updateData.name) {
       user.name = updateData.name;
     }
-    
+
     if (updateData.phone) {
       user.phone = updateData.phone;
     }
 
     const updatedUser = await this.userRepository.save(user);
-    
+
     if (!updatedUser) {
       throw new NotFoundException('Не удалось обновить профиль');
     }
@@ -46,7 +46,7 @@ export class ProfileService {
 
   async getProfileStats(userId: number): Promise<any> {
     const user = await this.findById(userId);
-    
+
     return {
       id: user.id,
       email: user.email,

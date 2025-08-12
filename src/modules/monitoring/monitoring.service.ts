@@ -61,13 +61,13 @@ export class MonitoringService {
       queueMetrics,
       databaseMetrics,
       systemMetrics,
-      performanceMetrics
+      performanceMetrics,
     ] = await Promise.all([
       this.getUserMetrics(),
       this.getQueueMetrics(),
       this.getDatabaseMetrics(),
       this.getSystemMetricsInternal(),
-      this.getPerformanceMetrics()
+      this.getPerformanceMetrics(),
     ]);
 
     return {
@@ -75,7 +75,7 @@ export class MonitoringService {
       queue: queueMetrics,
       database: databaseMetrics,
       system: systemMetrics,
-      performance: performanceMetrics
+      performance: performanceMetrics,
     };
   }
 
@@ -85,7 +85,7 @@ export class MonitoringService {
   private async getUserMetrics() {
     try {
       const inactiveStats = await this.userService.getInactiveUsersStatistics();
-      
+
       // Получаем общее количество пользователей через репозиторий
       const total = await this.userService.userRepository.count();
 
@@ -94,7 +94,7 @@ export class MonitoringService {
         active: total - inactiveStats.inactive6Months,
         inactive: inactiveStats.inactive6Months,
         verified: inactiveStats.verifiedUsers,
-        unverified: inactiveStats.unverifiedUsers
+        unverified: inactiveStats.unverifiedUsers,
       };
     } catch (error) {
       this.logger.error('Error getting user metrics:', error);
@@ -103,7 +103,7 @@ export class MonitoringService {
         active: 0,
         inactive: 0,
         verified: 0,
-        unverified: 0
+        unverified: 0,
       };
     }
   }
@@ -115,21 +115,27 @@ export class MonitoringService {
     try {
       const stats = this.queueService.getQueueStats();
       const topics = Object.keys(stats);
-      
-      const pending = topics.reduce((sum, topic) => sum + stats[topic].pending, 0);
-      const processing = topics.reduce((sum, topic) => sum + stats[topic].processing, 0);
+
+      const pending = topics.reduce(
+        (sum, topic) => sum + stats[topic].pending,
+        0,
+      );
+      const processing = topics.reduce(
+        (sum, topic) => sum + stats[topic].processing,
+        0,
+      );
 
       return {
         pending,
         processing,
-        topics
+        topics,
       };
     } catch (error) {
       this.logger.error('Error getting queue metrics:', error);
       return {
         pending: 0,
         processing: 0,
-        topics: []
+        topics: [],
       };
     }
   }
@@ -139,7 +145,7 @@ export class MonitoringService {
    */
   private async getDatabaseMetrics() {
     const startTime = Date.now();
-    
+
     try {
       // Проверяем подключение к БД
       await this.userService.userRepository.count();
@@ -148,13 +154,13 @@ export class MonitoringService {
       return {
         status: 'healthy' as const,
         responseTime,
-        connections: 0 // В реальности получаем из пула соединений
+        connections: 0, // В реальности получаем из пула соединений
       };
     } catch (error) {
       return {
         status: 'unhealthy' as const,
         responseTime: Date.now() - startTime,
-        connections: 0
+        connections: 0,
       };
     }
   }
@@ -173,11 +179,11 @@ export class MonitoringService {
       memory: {
         used: usedMemory,
         total: totalMemory,
-        percentage: (usedMemory / totalMemory) * 100
+        percentage: (usedMemory / totalMemory) * 100,
       },
       cpu: {
-        load: process.cpuUsage().user / 1000000 // в секундах
-      }
+        load: process.cpuUsage().user / 1000000, // в секундах
+      },
     };
   }
 
@@ -187,19 +193,20 @@ export class MonitoringService {
   private async getPerformanceMetrics() {
     const uptime = (Date.now() - this.startTime) / 1000; // в секундах
     const requestsPerSecond = this.requestCount / uptime;
-    
-    const averageResponseTime = this.responseTimes.length > 0 
-      ? this.responseTimes.reduce((a, b) => a + b, 0) / this.responseTimes.length 
-      : 0;
-    
-    const errorRate = this.requestCount > 0 
-      ? (this.errorCount / this.requestCount) * 100 
-      : 0;
+
+    const averageResponseTime =
+      this.responseTimes.length > 0
+        ? this.responseTimes.reduce((a, b) => a + b, 0) /
+          this.responseTimes.length
+        : 0;
+
+    const errorRate =
+      this.requestCount > 0 ? (this.errorCount / this.requestCount) * 100 : 0;
 
     return {
       requestsPerSecond,
       averageResponseTime,
-      errorRate
+      errorRate,
     };
   }
 
@@ -211,13 +218,15 @@ export class MonitoringService {
     if (isError) {
       this.errorCount++;
     }
-    
+
     this.responseTimes.push(duration);
-    
+
     // Ограничиваем массив последними 1000 запросами
-          if (this.responseTimes.length > PERFORMANCE.MAX_RESPONSE_TIMES_HISTORY) {
-        this.responseTimes = this.responseTimes.slice(-PERFORMANCE.MAX_RESPONSE_TIMES_HISTORY);
-      }
+    if (this.responseTimes.length > PERFORMANCE.MAX_RESPONSE_TIMES_HISTORY) {
+      this.responseTimes = this.responseTimes.slice(
+        -PERFORMANCE.MAX_RESPONSE_TIMES_HISTORY,
+      );
+    }
   }
 
   /**
@@ -225,9 +234,15 @@ export class MonitoringService {
    */
   async healthCheck(): Promise<{
     status: 'healthy' | 'unhealthy';
-    checks: Record<string, { status: 'healthy' | 'unhealthy'; message?: string }>;
+    checks: Record<
+      string,
+      { status: 'healthy' | 'unhealthy'; message?: string }
+    >;
   }> {
-    const checks: Record<string, { status: 'healthy' | 'unhealthy'; message?: string }> = {};
+    const checks: Record<
+      string,
+      { status: 'healthy' | 'unhealthy'; message?: string }
+    > = {};
 
     // Проверка базы данных
     try {
@@ -248,37 +263,45 @@ export class MonitoringService {
     // Проверка памяти
     const memUsage = process.memoryUsage();
     const memoryPercentage = (memUsage.heapUsed / memUsage.heapTotal) * 100;
-    
+
     if (memoryPercentage > 90) {
-      checks.memory = { status: 'unhealthy', message: `Memory usage: ${memoryPercentage.toFixed(2)}%` };
+      checks.memory = {
+        status: 'unhealthy',
+        message: `Memory usage: ${memoryPercentage.toFixed(2)}%`,
+      };
     } else {
       checks.memory = { status: 'healthy' };
     }
 
     // Проверка uptime
     const uptime = Date.now() - this.startTime;
-    if (uptime < 60000) { // Меньше минуты
+    if (uptime < 60000) {
+      // Меньше минуты
       checks.uptime = { status: 'unhealthy', message: 'Service just started' };
     } else {
       checks.uptime = { status: 'healthy' };
     }
 
-    const isHealthy = Object.values(checks).every(check => check.status === 'healthy');
+    const isHealthy = Object.values(checks).every(
+      (check) => check.status === 'healthy',
+    );
 
     return {
       status: isHealthy ? 'healthy' : 'unhealthy',
-      checks
+      checks,
     };
   }
 
   /**
    * Получение алертов
    */
-  async getAlerts(): Promise<Array<{
-    severity: 'low' | 'medium' | 'high' | 'critical';
-    message: string;
-    timestamp: Date;
-  }>> {
+  async getAlerts(): Promise<
+    Array<{
+      severity: 'low' | 'medium' | 'high' | 'critical';
+      message: string;
+      timestamp: Date;
+    }>
+  > {
     const alerts: Array<{
       severity: 'low' | 'medium' | 'high' | 'critical';
       message: string;
@@ -292,13 +315,13 @@ export class MonitoringService {
       alerts.push({
         severity: 'critical',
         message: `High error rate: ${metrics.performance.errorRate.toFixed(2)}%`,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     } else if (metrics.performance.errorRate > 5) {
       alerts.push({
         severity: 'high',
         message: `Elevated error rate: ${metrics.performance.errorRate.toFixed(2)}%`,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     }
 
@@ -307,13 +330,13 @@ export class MonitoringService {
       alerts.push({
         severity: 'critical',
         message: `High memory usage: ${metrics.system.memory.percentage.toFixed(2)}%`,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     } else if (metrics.system.memory.percentage > 80) {
       alerts.push({
         severity: 'high',
         message: `Elevated memory usage: ${metrics.system.memory.percentage.toFixed(2)}%`,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     }
 
@@ -322,7 +345,7 @@ export class MonitoringService {
       alerts.push({
         severity: 'high',
         message: `High queue backlog: ${metrics.queue.pending} pending messages`,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     }
 
@@ -331,7 +354,7 @@ export class MonitoringService {
       alerts.push({
         severity: 'critical',
         message: 'Database connection issues',
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     }
 

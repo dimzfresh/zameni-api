@@ -7,7 +7,12 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { ProfileService } from './profile.service';
 import { User } from '../../entities/user.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -42,7 +47,10 @@ export class ProfileController {
     @Request() req,
     @Body() updateData: UpdateProfileDto,
   ): Promise<ResponseDto<User>> {
-    const user = await this.profileService.updateProfile(req.user.id, updateData);
+    const user = await this.profileService.updateProfile(
+      req.user.id,
+      updateData,
+    );
     return {
       success: true,
       data: user,
@@ -58,7 +66,10 @@ export class ProfileController {
     @Request() req,
     @Body() updateData: UpdateProfileDto,
   ): Promise<ResponseDto<User>> {
-    const user = await this.profileService.updateProfile(req.user.id, updateData);
+    const user = await this.profileService.updateProfile(
+      req.user.id,
+      updateData,
+    );
     return {
       success: true,
       data: user,

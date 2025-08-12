@@ -32,7 +32,6 @@ export class UserAuthProcessor extends BaseQueueProcessor {
       }
 
       this.logSuccess(message.id);
-      
     } catch (error) {
       this.logError(message.id, error);
       throw error;
