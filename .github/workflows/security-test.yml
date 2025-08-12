@@ -1,0 +1,123 @@
+name: Security Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 2 * * 1'  # Каждый понедельник в 2:00
+  workflow_dispatch:
+    inputs:
+      scan_type:
+        description: 'Type of security scan'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - dependencies
+        - code
+        - container
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run dependency vulnerability scan
+      if: github.event.inputs.scan_type == 'dependencies' || github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == null
+      run: |
+        echo "🔍 Scanning dependencies for vulnerabilities..."
+        npm audit --audit-level=moderate
+        
+    - name: Run Snyk security scan
+      if: github.event.inputs.scan_type == 'dependencies' || github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == null
+      uses: snyk/actions/node@master
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=high
+        
+    - name: Run CodeQL analysis
+      if: github.event.inputs.scan_type == 'code' || github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == null
+      uses: github/codeql-action/init@v2
+      with:
+        languages: javascript
+        
+    - name: Perform CodeQL Analysis
+      if: github.event.inputs.scan_type == 'code' || github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == null
+      uses: github/codeql-action/analyze@v2
+      
+    - name: Run container security scan
+      if: github.event.inputs.scan_type == 'container' || github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == null
+      run: |
+        echo "🐳 Building Docker image for security scan..."
+        docker build -t zameni-api:security-scan .
+        
+        echo "🔍 Scanning Docker image with Trivy..."
+        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+          aquasec/trivy image zameni-api:security-scan --severity HIGH,CRITICAL --format json > trivy-results.json
+        
+        echo "📊 Trivy scan results:"
+        cat trivy-results.json | jq '.Results[] | select(.Vulnerabilities != null) | .Vulnerabilities[] | {VulnerabilityID: .VulnerabilityID, Severity: .Severity, Title: .Title}' || echo "No vulnerabilities found"
+        
+    - name: Run OWASP ZAP scan
+      if: github.event.inputs.scan_type == 'code' || github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == null
+      run: |
+        echo "🕷️ Running OWASP ZAP security scan..."
+        
+        # Запускаем приложение для сканирования
+        docker-compose -f docker-compose.test.yml up -d
+        
+        # Ждем запуска приложения
+        sleep 30
+        
+        # Запускаем ZAP сканер
+        docker run --rm -v $(pwd):/zap/wrk/:rw \
+          -t owasp/zap2docker-stable zap-baseline.py \
+          -t http://localhost:3000 \
+          -J zap-report.json \
+          -m 5
+        
+        echo "📊 ZAP scan completed"
+        
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-scan-results
+        path: |
+          trivy-results.json
+          zap-report.json
+          snyk-report.json
+        retention-days: 90
+        
+    - name: Notify security scan results
+      uses: appleboy/telegram-action@master
+      if: always() && github.event_name == 'workflow_dispatch'
+      with:
+        to: ${{ secrets.TELEGRAM_CHAT_ID }}
+        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        message: |
+          🔒 Security Scan Results
+          
+          📊 Repository: ${{ github.repository }}
+          🔄 Branch: ${{ github.ref_name }}
+          🎯 Scan Type: ${{ github.event.inputs.scan_type || 'all' }}
+          
+          ✅ Security scan completed!
+          
+          📋 View results: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

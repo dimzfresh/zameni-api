@@ -1,0 +1,147 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of tests to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - unit
+        - integration
+        - e2e
+      coverage:
+        description: 'Generate coverage report'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: zameni_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Setup test environment
+      run: |
+        cp .env.example .env.test
+        echo "NODE_ENV=test" >> .env.test
+        echo "DB_HOST=localhost" >> .env.test
+        echo "DB_PORT=5432" >> .env.test
+        echo "DB_DATABASE=zameni_test" >> .env.test
+        echo "DB_USERNAME=postgres" >> .env.test
+        echo "DB_PASSWORD=postgres" >> .env.test
+        echo "JWT_SECRET=test-secret-key" >> .env.test
+        
+    - name: Wait for database
+      run: |
+        echo "⏳ Waiting for PostgreSQL to be ready..."
+        timeout 60 bash -c 'until pg_isready -h localhost -p 5432 -U postgres; do sleep 1; done'
+        echo "✅ PostgreSQL is ready"
+        
+    - name: Run database migrations
+      run: npm run migration:run
+      env:
+        NODE_ENV: test
+        
+    - name: Run unit tests
+      if: github.event.inputs.test_type == 'unit' || github.event.inputs.test_type == 'all' || github.event.inputs.test_type == null
+      run: |
+        if [ "${{ github.event.inputs.coverage }}" = "true" ] || [ "${{ github.event.inputs.coverage }}" = "" ]; then
+          npm run test:cov
+        else
+          npm run test
+        fi
+      env:
+        NODE_ENV: test
+        
+    - name: Run integration tests
+      if: github.event.inputs.test_type == 'integration' || github.event.inputs.test_type == 'all' || github.event.inputs.test_type == null
+      run: |
+        if [ "${{ github.event.inputs.coverage }}" = "true" ] || [ "${{ github.event.inputs.coverage }}" = "" ]; then
+          npm run test:integration:cov
+        else
+          npm run test:integration
+        fi
+      env:
+        NODE_ENV: test
+        
+    - name: Run e2e tests
+      if: github.event.inputs.test_type == 'e2e' || github.event.inputs.test_type == 'all' || github.event.inputs.test_type == null
+      run: |
+        if [ "${{ github.event.inputs.coverage }}" = "true" ] || [ "${{ github.event.inputs.coverage }}" = "" ]; then
+          npm run test:e2e:cov
+        else
+          npm run test:e2e
+        fi
+      env:
+        NODE_ENV: test
+        
+    - name: Upload coverage to Codecov
+      if: (github.event.inputs.coverage == 'true' || github.event.inputs.coverage == '') && (github.event.inputs.test_type == 'all' || github.event.inputs.test_type == null)
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results
+        path: |
+          coverage/
+          test-results/
+        retention-days: 30
+        
+    - name: Notify test results
+      uses: appleboy/telegram-action@master
+      if: always() && github.event_name == 'workflow_dispatch'
+      with:
+        to: ${{ secrets.TELEGRAM_CHAT_ID }}
+        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        message: |
+          🧪 Test Results
+          
+          📊 Repository: ${{ github.repository }}
+          🔄 Branch: ${{ github.ref_name }}
+          🎯 Test Type: ${{ github.event.inputs.test_type || 'all' }}
+          📈 Coverage: ${{ github.event.inputs.coverage || 'true' }}
+          
+          ✅ Tests completed successfully!
+          
+          📋 View results: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

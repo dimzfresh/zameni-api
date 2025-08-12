@@ -1,0 +1,324 @@
+name: API Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 4 * * 3'  # Каждую среду в 4:00
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to test'
+        required: true
+        default: 'local'
+        type: choice
+        options:
+        - local
+        - staging
+        - production
+      test_suite:
+        description: 'Test suite to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - auth
+        - profile
+        - admin
+        - health
+
+jobs:
+  api-test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: zameni_api_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Setup test environment
+      run: |
+        cp .env.example .env.api-test
+        echo "NODE_ENV=test" >> .env.api-test
+        echo "DB_HOST=localhost" >> .env.api-test
+        echo "DB_PORT=5432" >> .env.api-test
+        echo "DB_DATABASE=zameni_api_test" >> .env.api-test
+        echo "DB_USERNAME=postgres" >> .env.api-test
+        echo "DB_PASSWORD=postgres" >> .env.api-test
+        echo "JWT_SECRET=api-test-secret" >> .env.api-test
+        
+    - name: Wait for database
+      run: |
+        echo "⏳ Waiting for PostgreSQL to be ready..."
+        timeout 60 bash -c 'until pg_isready -h localhost -p 5432 -U postgres; do sleep 1; done'
+        echo "✅ PostgreSQL is ready"
+        
+    - name: Run database migrations
+      run: npm run migration:run
+      env:
+        NODE_ENV: test
+        
+    - name: Start application for local testing
+      if: github.event.inputs.environment == 'local'
+      run: |
+        echo "🚀 Starting application for API testing..."
+        npm run start:prod &
+        APP_PID=$!
+        
+        # Ждем запуска приложения
+        sleep 30
+        
+        # Проверяем, что приложение запустилось
+        curl -f http://localhost:3000/health || exit 1
+        
+        echo "✅ Application is running (PID: $APP_PID)"
+        echo "APP_PID=$APP_PID" >> $GITHUB_ENV
+        
+    - name: Set API base URL
+      run: |
+        case "${{ github.event.inputs.environment }}" in
+          "local")
+            echo "API_BASE_URL=http://localhost:3000" >> $GITHUB_ENV
+            ;;
+          "staging")
+            echo "API_BASE_URL=https://staging.${{ secrets.DOMAIN }}" >> $GITHUB_ENV
+            ;;
+          "production")
+            echo "API_BASE_URL=https://${{ secrets.DOMAIN }}" >> $GITHUB_ENV
+            ;;
+        esac
+        
+    - name: Create API test scripts
+      run: |
+        cat > test-api.sh << 'EOF'
+        #!/bin/bash
+        
+        API_BASE_URL="$API_BASE_URL"
+        echo "🧪 Testing API at: $API_BASE_URL"
+        
+        # Функция для тестирования эндпоинта
+        test_endpoint() {
+            local method="$1"
+            local endpoint="$2"
+            local data="$3"
+            local expected_status="$4"
+            
+            local url="$API_BASE_URL$endpoint"
+            local response=""
+            
+            echo "🔍 Testing $method $endpoint..."
+            
+            if [ "$method" = "GET" ]; then
+                response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" "$url")
+            elif [ "$method" = "POST" ]; then
+                response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
+                    -H "Content-Type: application/json" \
+                    -d "$data" "$url")
+            fi
+            
+            local http_status=$(echo "$response" | grep "HTTP_STATUS:" | cut -d: -f2)
+            local body=$(echo "$response" | sed '/HTTP_STATUS:/d')
+            
+            if [ "$http_status" = "$expected_status" ]; then
+                echo "✅ $method $endpoint - OK ($http_status)"
+            else
+                echo "❌ $method $endpoint - Expected $expected_status, got $http_status"
+                echo "   Response: $body"
+                return 1
+            fi
+        }
+        
+        # Health check tests
+        if [ "${{ github.event.inputs.test_suite }}" = "health" ] || [ "${{ github.event.inputs.test_suite }}" = "all" ]; then
+            echo "🏥 Testing health endpoints..."
+            test_endpoint "GET" "/health" "" "200"
+            test_endpoint "GET" "/docs" "" "200"
+        fi
+        
+        # Auth tests
+        if [ "${{ github.event.inputs.test_suite }}" = "auth" ] || [ "${{ github.event.inputs.test_suite }}" = "all" ]; then
+            echo "🔐 Testing auth endpoints..."
+            
+            # Test login with invalid credentials
+            test_endpoint "POST" "/api/auth/login" '{"phone":"1234567890","password":"wrong"}' "400"
+            
+            # Test registration with invalid data
+            test_endpoint "POST" "/api/auth/register" '{"phone":"123","password":"short"}' "400"
+            
+            # Test refresh token without token
+            test_endpoint "POST" "/api/auth/refresh" '{}' "401"
+        fi
+        
+        # Profile tests
+        if [ "${{ github.event.inputs.test_suite }}" = "profile" ] || [ "${{ github.event.inputs.test_suite }}" = "all" ]; then
+            echo "👤 Testing profile endpoints..."
+            
+            # Test profile without authentication
+            test_endpoint "GET" "/api/profile" "" "401"
+            test_endpoint "PUT" "/api/profile" '{"name":"test"}' "401"
+        fi
+        
+        # Admin tests
+        if [ "${{ github.event.inputs.test_suite }}" = "admin" ] || [ "${{ github.event.inputs.test_suite }}" = "all" ]; then
+            echo "👨‍💼 Testing admin endpoints..."
+            
+            # Test admin endpoints without authentication
+            test_endpoint "GET" "/api/admin/users" "" "401"
+            test_endpoint "POST" "/api/admin/users" '{"phone":"1234567890"}' "401"
+        fi
+        
+        echo "✅ API testing completed!"
+        EOF
+        
+        chmod +x test-api.sh
+        
+    - name: Run API tests
+      run: |
+        echo "🧪 Running API tests..."
+        ./test-api.sh
+        
+    - name: Run Newman tests (if available)
+      run: |
+        if command -v newman &> /dev/null; then
+            echo "📋 Running Newman collection tests..."
+            
+            # Создаем простую коллекцию для Newman
+            cat > api-collection.json << EOF
+            {
+                "info": {
+                    "name": "Zameni API Tests",
+                    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+                },
+                "item": [
+                    {
+                        "name": "Health Check",
+                        "request": {
+                            "method": "GET",
+                            "url": {
+                                "raw": "$API_BASE_URL/health",
+                                "protocol": "http",
+                                "host": ["localhost"],
+                                "port": "3000",
+                                "path": ["health"]
+                            }
+                        }
+                    },
+                    {
+                        "name": "Swagger Docs",
+                        "request": {
+                            "method": "GET",
+                            "url": {
+                                "raw": "$API_BASE_URL/docs",
+                                "protocol": "http",
+                                "host": ["localhost"],
+                                "port": "3000",
+                                "path": ["docs"]
+                            }
+                        }
+                    }
+                ]
+            }
+            EOF
+            
+            newman run api-collection.json --reporters cli,json --reporter-json-export newman-results.json
+        else
+            echo "📋 Newman not available, skipping collection tests"
+        fi
+        
+    - name: Run Swagger validation
+      run: |
+        echo "📚 Validating Swagger documentation..."
+        
+        # Получаем OpenAPI спецификацию
+        curl -s "$API_BASE_URL/api-json" > swagger.json
+        
+        # Проверяем, что это валидный JSON
+        if jq empty swagger.json 2>/dev/null; then
+            echo "✅ Swagger JSON is valid"
+            
+            # Проверяем наличие основных эндпоинтов
+            echo "🔍 Checking API endpoints in Swagger..."
+            
+            # Список ожидаемых эндпоинтов
+            expected_endpoints=(
+                "/health"
+                "/docs"
+                "/api/auth/login"
+                "/api/auth/register"
+                "/api/auth/refresh"
+                "/api/profile"
+            )
+            
+            for endpoint in "${expected_endpoints[@]}"; do
+                if jq -e ".paths[\"$endpoint\"]" swagger.json > /dev/null; then
+                    echo "✅ $endpoint found in Swagger"
+                else
+                    echo "❌ $endpoint not found in Swagger"
+                fi
+            done
+        else
+            echo "❌ Swagger JSON is invalid"
+            exit 1
+        fi
+        
+    - name: Stop application
+      if: always() && github.event.inputs.environment == 'local'
+      run: |
+        if [ -n "$APP_PID" ]; then
+            echo "🛑 Stopping application (PID: $APP_PID)..."
+            kill $APP_PID || true
+        fi
+        
+    - name: Upload API test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: api-test-results
+        path: |
+          swagger.json
+          newman-results.json
+          test-api.sh
+        retention-days: 30
+        
+    - name: Notify API test results
+      uses: appleboy/telegram-action@master
+      if: always() && github.event_name == 'workflow_dispatch'
+      with:
+        to: ${{ secrets.TELEGRAM_CHAT_ID }}
+        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        message: |
+          🔌 API Test Results
+          
+          📊 Repository: ${{ github.repository }}
+          🔄 Branch: ${{ github.ref_name }}
+          🌍 Environment: ${{ github.event.inputs.environment || 'local' }}
+          🎯 Test Suite: ${{ github.event.inputs.test_suite || 'all' }}
+          
+          ✅ API tests completed!
+          
+          📋 View results: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

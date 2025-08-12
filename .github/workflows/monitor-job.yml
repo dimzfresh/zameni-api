@@ -1,0 +1,75 @@
+name: Monitor Job
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'  # Каждые 6 часов
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Check server health
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          echo "🔍 Checking server health..."
+          
+          # Проверяем диск
+          DISK_USAGE=$(df -h / | awk 'NR==2 {print $5}' | sed 's/%//')
+          echo "💾 Disk usage: ${DISK_USAGE}%"
+          
+          # Проверяем память
+          MEMORY_USAGE=$(free | awk 'NR==2{printf "%.1f", $3*100/$2}')
+          echo "🧠 Memory usage: ${MEMORY_USAGE}%"
+          
+          # Проверяем загрузку CPU
+          CPU_LOAD=$(uptime | awk -F'load average:' '{print $2}' | awk '{print $1}' | sed 's/,//')
+          echo "⚡ CPU load: $CPU_LOAD"
+          
+          # Проверяем Docker контейнеры
+          echo "🐳 Docker containers status:"
+          docker-compose -f docker-compose.production.yml ps
+          
+          # Проверяем логи на ошибки
+          echo "📋 Recent error logs:"
+          docker-compose -f docker-compose.production.yml logs --tail=20 | grep -i error || echo "No errors found"
+          
+          # Проверяем доступность приложения
+          if curl -f https://${{ secrets.DOMAIN }}/health > /dev/null 2>&1; then
+            echo "✅ Application is healthy"
+            APP_STATUS="healthy"
+          else
+            echo "❌ Application is not responding"
+            APP_STATUS="unhealthy"
+          fi
+          
+          # Сохраняем результаты для уведомления
+          echo "DISK_USAGE=$DISK_USAGE" >> $GITHUB_ENV
+          echo "MEMORY_USAGE=$MEMORY_USAGE" >> $GITHUB_ENV
+          echo "CPU_LOAD=$CPU_LOAD" >> $GITHUB_ENV
+          echo "APP_STATUS=$APP_STATUS" >> $GITHUB_ENV
+          
+    - name: Send monitoring report
+      uses: appleboy/telegram-action@master
+      with:
+        to: ${{ secrets.TELEGRAM_CHAT_ID }}
+        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        message: |
+          📊 Server Monitoring Report
+          
+          🖥️ Server: ${{ secrets.SERVER_HOST }}
+          💾 Disk usage: ${{ env.DISK_USAGE }}%
+          🧠 Memory usage: ${{ env.MEMORY_USAGE }}%
+          ⚡ CPU load: ${{ env.CPU_LOAD }}
+          💚 App status: ${{ env.APP_STATUS }}
+          
+          🌐 Domain: ${{ secrets.DOMAIN }}
+          📚 Docs: https://${{ secrets.DOMAIN }}/docs
+          💚 Health: https://${{ secrets.DOMAIN }}/health
+          
+          ⏰ Checked at: $(date)

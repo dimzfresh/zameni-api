@@ -1,0 +1,270 @@
+name: Performance Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 3 * * 2'  # Каждый вторник в 3:00
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of performance test'
+        required: true
+        default: 'load'
+        type: choice
+        options:
+        - load
+        - stress
+        - spike
+        - soak
+      duration:
+        description: 'Test duration in minutes'
+        required: false
+        default: '5'
+        type: string
+      users:
+        description: 'Number of concurrent users'
+        required: false
+        default: '10'
+        type: string
+
+jobs:
+  performance-test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: zameni_performance
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Setup test environment
+      run: |
+        cp .env.example .env.performance
+        echo "NODE_ENV=test" >> .env.performance
+        echo "DB_HOST=localhost" >> .env.performance
+        echo "DB_PORT=5432" >> .env.performance
+        echo "DB_DATABASE=zameni_performance" >> .env.performance
+        echo "DB_USERNAME=postgres" >> .env.performance
+        echo "DB_PASSWORD=postgres" >> .env.performance
+        echo "JWT_SECRET=performance-test-secret" >> .env.performance
+        
+    - name: Wait for database
+      run: |
+        echo "⏳ Waiting for PostgreSQL to be ready..."
+        timeout 60 bash -c 'until pg_isready -h localhost -p 5432 -U postgres; do sleep 1; done'
+        echo "✅ PostgreSQL is ready"
+        
+    - name: Run database migrations
+      run: npm run migration:run
+      env:
+        NODE_ENV: test
+        
+    - name: Start application
+      run: |
+        echo "🚀 Starting application for performance testing..."
+        npm run start:prod &
+        APP_PID=$!
+        
+        # Ждем запуска приложения
+        sleep 30
+        
+        # Проверяем, что приложение запустилось
+        curl -f http://localhost:3000/health || exit 1
+        
+        echo "✅ Application is running (PID: $APP_PID)"
+        echo "APP_PID=$APP_PID" >> $GITHUB_ENV
+        
+    - name: Install Artillery
+      run: npm install -g artillery
+        
+    - name: Create performance test scenarios
+      run: |
+        cat > load-test.yml << EOF
+        config:
+          target: 'http://localhost:3000'
+          phases:
+            - duration: ${{ github.event.inputs.duration || '5' }}m
+              arrivalRate: ${{ github.event.inputs.users || '10' }}
+              name: "Load test phase"
+          defaults:
+            headers:
+              Content-Type: 'application/json'
+        
+        scenarios:
+          - name: "API endpoints test"
+            weight: 100
+            requests:
+              - get:
+                  url: "/health"
+                  expect:
+                    - statusCode: 200
+              - get:
+                  url: "/docs"
+                  expect:
+                    - statusCode: 200
+              - post:
+                  url: "/api/auth/login"
+                  json:
+                    phone: "1234567890"
+                    password: "testpassword"
+                  expect:
+                    - statusCode: [400, 401, 404]
+        EOF
+        
+        cat > stress-test.yml << EOF
+        config:
+          target: 'http://localhost:3000'
+          phases:
+            - duration: 2m
+              arrivalRate: 5
+              name: "Warm up"
+            - duration: 5m
+              arrivalRate: 10
+              rampTo: 50
+              name: "Ramp up"
+            - duration: 3m
+              arrivalRate: 50
+              name: "Sustained load"
+            - duration: 2m
+              arrivalRate: 50
+              rampTo: 100
+              name: "Stress test"
+          defaults:
+            headers:
+              Content-Type: 'application/json'
+        
+        scenarios:
+          - name: "Stress test scenarios"
+            weight: 100
+            requests:
+              - get:
+                  url: "/health"
+              - get:
+                  url: "/docs"
+              - post:
+                  url: "/api/auth/login"
+                  json:
+                    phone: "1234567890"
+                    password: "testpassword"
+        EOF
+        
+    - name: Run performance tests
+      run: |
+        echo "🧪 Running ${{ github.event.inputs.test_type }} performance test..."
+        
+        case "${{ github.event.inputs.test_type }}" in
+          "load")
+            artillery run load-test.yml -o load-test-results.json
+            ;;
+          "stress")
+            artillery run stress-test.yml -o stress-test-results.json
+            ;;
+          "spike")
+            # Spike test - резкое увеличение нагрузки
+            artillery run -o spike-test-results.json load-test.yml &
+            sleep 30
+            artillery run -o spike-test-results-2.json load-test.yml &
+            wait
+            ;;
+          "soak")
+            # Soak test - длительная нагрузка
+            artillery run --duration 30m --arrival-rate 5 load-test.yml -o soak-test-results.json
+            ;;
+        esac
+        
+    - name: Generate performance report
+      run: |
+        echo "📊 Generating performance report..."
+        
+        # Находим результаты тестов
+        RESULTS_FILE=""
+        case "${{ github.event.inputs.test_type }}" in
+          "load")
+            RESULTS_FILE="load-test-results.json"
+            ;;
+          "stress")
+            RESULTS_FILE="stress-test-results.json"
+            ;;
+          "spike")
+            RESULTS_FILE="spike-test-results.json"
+            ;;
+          "soak")
+            RESULTS_FILE="soak-test-results.json"
+            ;;
+        esac
+        
+        if [ -f "$RESULTS_FILE" ]; then
+          echo "📈 Performance Test Results:"
+          cat "$RESULTS_FILE" | jq -r '
+            "Test Type: \(.aggregate.scenarioCounts | keys | join(", "))",
+            "Total Requests: \(.aggregate.counts.total)",
+            "Successful Requests: \(.aggregate.counts.ok)",
+            "Failed Requests: \(.aggregate.counts.errors)",
+            "Mean Response Time: \(.aggregate.latency.median)ms",
+            "95th Percentile: \(.aggregate.latency.p95)ms",
+            "99th Percentile: \(.aggregate.latency.p99)ms",
+            "Requests per Second: \(.aggregate.rps.mean)"
+          '
+        fi
+        
+    - name: Stop application
+      if: always()
+      run: |
+        if [ -n "$APP_PID" ]; then
+          echo "🛑 Stopping application (PID: $APP_PID)..."
+          kill $APP_PID || true
+        fi
+        
+    - name: Upload performance test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: performance-test-results
+        path: |
+          *-test-results.json
+          load-test.yml
+          stress-test.yml
+        retention-days: 30
+        
+    - name: Notify performance test results
+      uses: appleboy/telegram-action@master
+      if: always() && github.event_name == 'workflow_dispatch'
+      with:
+        to: ${{ secrets.TELEGRAM_CHAT_ID }}
+        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        message: |
+          ⚡ Performance Test Results
+          
+          📊 Repository: ${{ github.repository }}
+          🔄 Branch: ${{ github.ref_name }}
+          🎯 Test Type: ${{ github.event.inputs.test_type || 'load' }}
+          ⏱️ Duration: ${{ github.event.inputs.duration || '5' }}m
+          👥 Users: ${{ github.event.inputs.users || '10' }}
+          
+          ✅ Performance test completed!
+          
+          📋 View results: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
