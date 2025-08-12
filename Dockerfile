@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Устанавливаем все зависимости (включая dev для сборки)
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # Копируем исходный код
 COPY . .
@@ -15,7 +15,7 @@ COPY . .
 RUN npm run build
 
 # Удаляем dev зависимости после сборки
-RUN npm prune --production
+RUN npm prune --production --legacy-peer-deps
 
 # Создаем пользователя для безопасности
 RUN addgroup -g 1001 -S nodejs
